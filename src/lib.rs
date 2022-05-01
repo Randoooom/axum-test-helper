@@ -19,18 +19,14 @@ pub struct TestClient {
 impl TestClient {
     pub fn new<S, ResBody>(svc: S) -> Self
     where
-        S: Service<Request<Body>, Response = http::Response<ResBody>>
-        + Clone
-        + Send
-        + 'static,
+        S: Service<Request<Body>, Response = http::Response<ResBody>> + Clone + Send + 'static,
         ResBody: HttpBody + Send + 'static,
         ResBody::Data: Send,
         ResBody::Error: Into<BoxError>,
         S::Future: Send,
         S::Error: Into<BoxError>,
     {
-        let listener =
-            TcpListener::bind("127.0.0.1:0").expect("Could not bind ephemeral socket");
+        let listener = TcpListener::bind("127.0.0.1:0").expect("Could not bind ephemeral socket");
         let addr = listener.local_addr().unwrap();
         println!("Listening on {}", addr);
 
@@ -66,7 +62,6 @@ impl TestClient {
         RequestBuilder {
             builder: self.client.post(format!("http://{}{}", self.addr, url)),
         }
-        .header("Content-Type", "application/json")
     }
 
     #[allow(dead_code)]
@@ -80,6 +75,13 @@ impl TestClient {
     pub fn patch(&self, url: &str) -> RequestBuilder {
         RequestBuilder {
             builder: self.client.patch(format!("http://{}{}", self.addr, url)),
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn delete(&self, url: &str) -> RequestBuilder {
+        RequestBuilder {
+            builder: self.client.delete(format!("http://{}{}", self.addr, url)),
         }
     }
 }
@@ -112,13 +114,23 @@ impl RequestBuilder {
         self
     }
 
+    /// Send form data as x-www-form-urlencoded
+    #[allow(dead_code)]
+    pub fn form<T>(mut self, form: &T) -> Self
+    where
+        T: serde::Serialize,
+    {
+        self.builder = self.builder.form(form);
+        self
+    }
+
     #[allow(dead_code)]
     pub fn header<K, V>(mut self, key: K, value: V) -> Self
     where
         HeaderName: TryFrom<K>,
-    <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
+        <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
         HeaderValue: TryFrom<V>,
-    <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
+        <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
         self.builder = self.builder.header(key, value);
         self
@@ -174,8 +186,8 @@ impl TestResponse {
 
 #[cfg(test)]
 mod tests {
-    use axum::Router;
     use axum::routing::get;
+    use axum::Router;
     use http::StatusCode;
 
     #[tokio::test]
